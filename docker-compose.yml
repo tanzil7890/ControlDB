@@ -1,0 +1,56 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: controldb
+      POSTGRES_PASSWORD: controldb
+      POSTGRES_DB: controldb
+    volumes:
+      - controldb_pgdata:/var/lib/postgresql/data
+    ports: ["5432:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U controldb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:RELEASE.2024-04-18T19-09-19Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: controldb
+      MINIO_ROOT_PASSWORD: controldbminio
+    ports: ["9000:9000", "9001:9001"]
+    volumes:
+      - controldb_miniodata:/data
+
+  otel-collector:
+    image: otel/opentelemetry-collector:0.103.0
+    command: ["--config=/etc/otel/config.yaml"]
+    volumes:
+      - ./deploy/docker/otel-config.yaml:/etc/otel/config.yaml:ro
+    ports: ["4317:4317", "4318:4318"]
+
+  collector:
+    build:
+      context: .
+      dockerfile: deploy/docker/Dockerfile.collector
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      CONTROLDB_DATABASE_URL: postgresql+psycopg://controldb:controldb@postgres:5432/controldb
+      CONTROLDB_OBJECT_STORE_DIR: /data/artifacts
+      CONTROLDB_BOOTSTRAP_API_KEYS: dev-key
+      CONTROLDB_PUBLIC_URL: http://localhost:8080
+      CONTROLDB_ENABLE_DASHBOARD: "1"
+    ports: ["8080:8080"]
+    volumes:
+      - controldb_artifacts:/data/artifacts
+
+volumes:
+  controldb_pgdata: {}
+  controldb_miniodata: {}
+  controldb_artifacts: {}

@@ -1,0 +1,27 @@
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app/services/collector:/app/sdk/python
+
+WORKDIR /app
+
+COPY services/collector/pyproject.toml /app/services/collector/pyproject.toml
+COPY sdk/python/pyproject.toml /app/sdk/python/pyproject.toml
+
+RUN pip install --no-cache-dir \
+    'fastapi>=0.108' 'uvicorn[standard]>=0.27' 'pydantic>=2,<3' \
+    'sqlalchemy>=2,<3' 'httpx>=0.24' 'pyyaml>=6' 'psycopg[binary]>=3.1'
+
+COPY sdk/python /app/sdk/python
+COPY services/collector /app/services/collector
+COPY deploy/policies /app/deploy/policies
+COPY specs /app/specs
+
+ENV CONTROLDB_DATABASE_URL=sqlite:///./controldb.sqlite \
+    CONTROLDB_OBJECT_STORE_DIR=/data/artifacts \
+    CONTROLDB_POLICIES_DIR=/app/deploy/policies \
+    CONTROLDB_PORT=8080
+
+EXPOSE 8080
+CMD ["python", "-m", "controldb_collector"]

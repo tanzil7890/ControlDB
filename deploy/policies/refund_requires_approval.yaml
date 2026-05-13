@@ -1,0 +1,20 @@
+policy_id: refund_requires_approval
+policy_version: "2026-05-01"
+description: Refund amounts greater than 5000 require human approval.
+rules:
+  - when:
+      action: approve_refund
+      amount: {gt: 5000}
+    result:
+      allowed: false
+      requires_approval: true
+      reason: Refund amount exceeds threshold
+  - when:
+      action: approve_refund
+    result:
+      allowed: true
+      requires_approval: false
+      reason: Within auto-approve threshold
+  - default: true
+    result:
+      allowed: true

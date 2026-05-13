@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+controldb_dev.sqlite
+controldb.sqlite
+controldb_artifacts/
+.controldb_spool/
+tmp_*

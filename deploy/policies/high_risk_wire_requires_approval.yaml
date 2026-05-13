@@ -1,0 +1,20 @@
+policy_id: high_risk_wire_requires_approval
+policy_version: "2026-05-01"
+description: High-risk wire transfers require AML reviewer approval.
+rules:
+  - when:
+      risk_score: {gte: 0.8}
+    result:
+      allowed: false
+      requires_approval: true
+      reason: High risk score requires AML reviewer approval
+  - when:
+      amount: {gt: 10000}
+    result:
+      allowed: false
+      requires_approval: true
+      reason: Wire transfer above $10k requires approval
+  - default: true
+    result:
+      allowed: true
+      requires_approval: false
