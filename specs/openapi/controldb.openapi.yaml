@@ -1,0 +1,154 @@
+openapi: 3.0.3
+info:
+  title: ControlDB Collector API
+  version: "2026-05-01"
+  description: |
+    REST API for the ControlDB SDK and dashboard.
+    All write endpoints accept an Idempotency-Key header.
+servers:
+  - url: http://localhost:8080
+    description: Local dev
+security:
+  - ApiKeyAuth: []
+paths:
+  /healthz:
+    get:
+      summary: Liveness
+      security: []
+      responses: {"200": {"description": "ok"}}
+  /v1/runs/start:
+    post:
+      summary: Start an agent run
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/RunStartRequest"}
+      responses:
+        "200":
+          description: created
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/RunDescriptor"}
+  /v1/runs/{run_id}/events:
+    post:
+      summary: Append events to a run
+      parameters:
+        - {in: path, name: run_id, required: true, schema: {type: string}}
+        - {in: header, name: Idempotency-Key, required: false, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [events]
+              properties:
+                events:
+                  type: array
+                  items: {$ref: "#/components/schemas/EventInput"}
+      responses:
+        "200":
+          description: accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  event_ids:
+                    type: array
+                    items: {type: string}
+  /v1/runs/{run_id}/commit:
+    post:
+      summary: Commit a run
+      parameters: [{in: path, name: run_id, required: true, schema: {type: string}}]
+      responses: {"200": {"description": "committed"}}
+  /v1/runs/{run_id}/rollback:
+    post:
+      summary: Rollback a run
+      parameters: [{in: path, name: run_id, required: true, schema: {type: string}}]
+      responses: {"200": {"description": "rolled_back"}}
+  /v1/runs/{run_id}:
+    get:
+      summary: Get run descriptor
+      parameters: [{in: path, name: run_id, required: true, schema: {type: string}}]
+      responses: {"200": {"description": "ok"}}
+  /v1/runs/{run_id}/timeline:
+    get:
+      summary: Ordered events for a run
+      parameters:
+        - {in: path, name: run_id, required: true, schema: {type: string}}
+        - {in: query, name: limit, schema: {type: integer, default: 1000}}
+        - {in: query, name: cursor, schema: {type: string}}
+      responses: {"200": {"description": "ok"}}
+  /v1/runs/{run_id}/replay:
+    get:
+      summary: Historical replay payload
+      parameters: [{in: path, name: run_id, required: true, schema: {type: string}}]
+      responses: {"200": {"description": "ok"}}
+  /v1/runs/{run_id}/verify:
+    get:
+      summary: Verify hash chain integrity for a run
+      parameters: [{in: path, name: run_id, required: true, schema: {type: string}}]
+      responses: {"200": {"description": "ok"}}
+  /v1/policy/check:
+    post:
+      summary: Evaluate a policy
+      responses: {"200": {"description": "ok"}}
+  /v1/approvals/request:
+    post:
+      summary: Request human approval
+      responses: {"200": {"description": "ok"}}
+  /v1/approvals/{approval_id}/approve:
+    post:
+      summary: Approve
+      parameters: [{in: path, name: approval_id, required: true, schema: {type: string}}]
+      responses: {"200": {"description": "ok"}}
+  /v1/approvals/{approval_id}/reject:
+    post:
+      summary: Reject
+      parameters: [{in: path, name: approval_id, required: true, schema: {type: string}}]
+      responses: {"200": {"description": "ok"}}
+  /v1/approvals/pending:
+    get:
+      summary: List pending approvals
+      responses: {"200": {"description": "ok"}}
+  /v1/audit/export:
+    post:
+      summary: Create evidence export for a run
+      responses: {"200": {"description": "ok"}}
+  /v1/query:
+    post:
+      summary: Structured query over audit events
+      responses: {"200": {"description": "ok"}}
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+  schemas:
+    RunStartRequest:
+      type: object
+      required: [agent_id]
+      properties:
+        agent_id: {type: string}
+        agent_version: {type: string}
+        environment: {type: string}
+        metadata: {type: object}
+    RunDescriptor:
+      type: object
+      properties:
+        run_id: {type: string}
+        status: {type: string}
+    EventInput:
+      type: object
+      required: [event_type, payload_mode]
+      properties:
+        event_type: {type: string}
+        step_id: {type: string}
+        step_index: {type: integer}
+        payload_mode: {type: string}
+        payload: {type: object}
+        occurred_at: {type: string, format: date-time}
+        idempotency_key: {type: string}
