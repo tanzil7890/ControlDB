@@ -139,6 +139,10 @@ class IngestService:
             )
             session.add(row)
             METRICS.inc("controldb.runs.started")
+        _LOG.info(
+            '{"service":"controldb-collector","event":"run.started","org_id":"%s","project_id":"%s","run_id":"%s","agent_id":"%s"}',
+            principal.org_id, principal.project_id, resolved_run_id, agent_id,
+        )
         return {"run_id": resolved_run_id, "status": "running"}
 
     def commit_run(self, principal: Principal, run_id: str) -> Dict[str, Any]:
@@ -147,7 +151,11 @@ class IngestService:
             run.status = "committed"
             run.ended_at = _utcnow()
             METRICS.inc("controldb.runs.committed")
-            return {"run_id": run.run_id, "status": run.status}
+        _LOG.info(
+            '{"service":"controldb-collector","event":"run.committed","org_id":"%s","project_id":"%s","run_id":"%s"}',
+            principal.org_id, principal.project_id, run_id,
+        )
+        return {"run_id": run_id, "status": "committed"}
 
     def rollback_run(self, principal: Principal, run_id: str, reason: Optional[str] = None) -> Dict[str, Any]:
         with self.db.session() as session:
@@ -156,6 +164,11 @@ class IngestService:
             run.ended_at = _utcnow()
             if reason:
                 run.metadata_json = {**(run.metadata_json or {}), "rollback_reason": reason}
+        METRICS.inc("controldb.runs.failed")
+        _LOG.info(
+            '{"service":"controldb-collector","event":"run.rolled_back","org_id":"%s","project_id":"%s","run_id":"%s","reason":"%s"}',
+            principal.org_id, principal.project_id, run_id, reason or "",
+        )
         return {"run_id": run_id, "status": "rolled_back", "reason": reason}
 
     def get_run(self, principal: Principal, run_id: str) -> Dict[str, Any]:
@@ -188,18 +201,31 @@ class IngestService:
             run = self._authorize_run(session, principal, run_id)
             previous_hash = run.last_event_hash
             for event in events:
-                stored_id, previous_hash = self._persist_event(
-                    session,
-                    principal,
-                    run,
-                    event,
-                    previous_hash=previous_hash,
-                )
-                accepted_ids.append(stored_id)
+                try:
+                    stored_id, previous_hash = self._persist_event(
+                        session,
+                        principal,
+                        run,
+                        event,
+                        previous_hash=previous_hash,
+                    )
+                    accepted_ids.append(stored_id)
+                except IngestError:
+                    METRICS.inc("controldb.events.failed")
+                    _LOG.warning(
+                        '{"service":"controldb-collector","event":"events.failed","org_id":"%s","project_id":"%s","run_id":"%s","event_type":"%s"}',
+                        principal.org_id, principal.project_id, run_id, event.get("event_type", "unknown"),
+                    )
+                    raise
             run.last_event_hash = previous_hash
             run.event_count += len(accepted_ids)
         METRICS.inc("controldb.events.ingested", by=float(len(accepted_ids)))
-        METRICS.observe("controldb.ingestion.latency_ms", (time.perf_counter() - start) * 1000.0)
+        latency = (time.perf_counter() - start) * 1000.0
+        METRICS.observe("controldb.ingestion.latency_ms", latency)
+        _LOG.info(
+            '{"service":"controldb-collector","event":"events.ingested","org_id":"%s","project_id":"%s","run_id":"%s","count":%d,"latency_ms":%.1f}',
+            principal.org_id, principal.project_id, run_id, len(accepted_ids), latency,
+        )
         return accepted_ids
 
     def _persist_event(

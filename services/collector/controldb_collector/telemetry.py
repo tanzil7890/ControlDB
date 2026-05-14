@@ -34,3 +34,25 @@ class Metrics:
 
 
 METRICS = Metrics()
+
+# Pre-seed all documented metric names so snapshot() always returns them.
+_METRIC_NAMES = [
+    "controldb.events.ingested",
+    "controldb.events.failed",
+    "controldb.runs.started",
+    "controldb.runs.committed",
+    "controldb.runs.failed",
+    "controldb.policy.allowed",
+    "controldb.policy.blocked",
+    "controldb.approvals.requested",
+    "controldb.exports.completed",
+]
+for _name in _METRIC_NAMES:
+    METRICS._counters[_name]  # defaultdict touch — no lock needed at import time
+
+_HISTOGRAM_NAMES = [
+    "controldb.ingestion.latency_ms",
+    "controldb.replay.latency_ms",
+]
+for _name in _HISTOGRAM_NAMES:
+    METRICS._histograms[_name]

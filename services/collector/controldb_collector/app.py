@@ -217,9 +217,12 @@ def create_app(database: Optional[Database] = None) -> FastAPI:
         run_id: str = PathParam(...),
         principal: Principal = Depends(require_scope("events", "read")),
     ) -> Dict[str, Any]:
+        import time
+        start = time.perf_counter()
         try:
             timeline = ingest.timeline(principal, run_id)
             verification = ingest.verify(principal, run_id)
+            METRICS.observe("controldb.replay.latency_ms", (time.perf_counter() - start) * 1000.0)
             return {"timeline": timeline, "verification": verification, "mode": "historical"}
         except IngestError as exc:
             raise HTTPException(status_code=exc.status_code, detail=str(exc))
