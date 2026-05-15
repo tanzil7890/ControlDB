@@ -1,0 +1,15 @@
+apiVersion: v2
+name: controldb
+description: ControlDB – tamper-evident audit backend for regulated AI agents
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - ai-governance
+  - audit
+  - compliance
+  - fintech
+  - healthcare
+maintainers:
+  - name: ControlDB
+    email: platform@controldb.io

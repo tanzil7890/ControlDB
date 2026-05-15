@@ -1,0 +1,132 @@
+# Default values for controldb.
+# Override with: helm install controldb . -f my-values.yaml
+
+replicaCount: 2
+
+image:
+  repository: ghcr.io/controldb/collector
+  pullPolicy: IfNotPresent
+  tag: ""  # defaults to Chart.appVersion
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8080"
+  prometheus.io/path: "/metrics"
+
+podSecurityContext:
+  fsGroup: 1000
+  runAsNonRoot: true
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsUser: 1000
+  capabilities:
+    drop:
+      - ALL
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+
+ingress:
+  enabled: false
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: controldb.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: controldb-tls
+      hosts:
+        - controldb.example.com
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+tolerations: []
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: controldb
+          topologyKey: kubernetes.io/hostname
+
+persistence:
+  enabled: true
+  storageClass: ""
+  accessMode: ReadWriteOnce
+  size: 10Gi
+  mountPath: /data
+
+database:
+  # Use external PostgreSQL in production.
+  # Set url to postgresql+psycopg://user:pass@host:5432/controldb
+  url: "sqlite:////data/controldb.sqlite"
+  existingSecret: ""       # secret key: CONTROLDB_DATABASE_URL
+  secretKey: CONTROLDB_DATABASE_URL
+
+config:
+  publicUrl: "http://localhost:8080"
+  schemVersion: "2026-05-01"
+  enableDashboard: "1"
+  policiesDir: "/app/deploy/policies"
+  objectStoreDir: "/data/artifacts"
+  bootstrapOrgId: "org_default"
+  bootstrapProjectId: "proj_default"
+  logLevel: "INFO"
+
+secrets:
+  jwtSecret: ""          # required in production — use existingSecret
+  encryptionKey: ""      # required in production — use existingSecret
+  bootstrapApiKeys: "dev-api-key"
+  existingSecret: ""     # name of pre-existing k8s Secret
+  jwtSecretKey: CONTROLDB_JWT_SECRET
+  encryptionKeyKey: CONTROLDB_ENCRYPTION_KEY
+  bootstrapApiKeysKey: CONTROLDB_BOOTSTRAP_API_KEYS
+
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 30
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /healthz
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  failureThreshold: 3
