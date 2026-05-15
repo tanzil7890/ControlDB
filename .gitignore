@@ -12,3 +12,7 @@ tmp_*
 node_modules/
 dist/
 package-lock.json
+extra/
+controldb_sdk_industry_implementation_guide.md
+
+
