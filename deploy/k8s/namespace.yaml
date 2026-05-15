@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: controldb
+  labels:
+    app.kubernetes.io/name: controldb
+    app.kubernetes.io/managed-by: kubectl

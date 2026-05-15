@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: controldb-config
+  namespace: controldb
+  labels:
+    app.kubernetes.io/name: controldb
+data:
+  CONTROLDB_DATABASE_URL: "postgresql+psycopg://controldb:changeme@postgres-svc:5432/controldb"
+  CONTROLDB_OBJECT_STORE_DIR: "/data/artifacts"
+  CONTROLDB_PUBLIC_URL: "https://controldb.example.com"
+  CONTROLDB_POLICIES_DIR: "/app/deploy/policies"
+  CONTROLDB_ENABLE_DASHBOARD: "1"
+  CONTROLDB_BOOTSTRAP_ORG_ID: "org_default"
+  CONTROLDB_BOOTSTRAP_PROJECT_ID: "proj_default"
+  LOG_LEVEL: "INFO"
