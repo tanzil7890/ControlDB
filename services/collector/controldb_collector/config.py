@@ -26,6 +26,8 @@ class Settings:
     policies_dir: Optional[str] = field(default_factory=lambda: os.environ.get("CONTROLDB_POLICIES_DIR"))
     opa_url: Optional[str] = field(default_factory=lambda: os.environ.get("CONTROLDB_OPA_URL"))
     enable_dashboard: bool = field(default_factory=lambda: os.environ.get("CONTROLDB_ENABLE_DASHBOARD", "1") == "1")
+    engine_backend: str = field(default_factory=lambda: os.environ.get("CONTROLDB_ENGINE_BACKEND", "sqlalchemy"))
+    rocksdb_path: str = field(default_factory=lambda: os.environ.get("CONTROLDB_ROCKSDB_PATH", "./controldb_rocksdb"))
     schema_version: str = "2026-05-01"
 
 
