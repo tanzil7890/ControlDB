@@ -9,3 +9,6 @@ controldb.sqlite
 controldb_artifacts/
 .controldb_spool/
 tmp_*
+node_modules/
+dist/
+package-lock.json
